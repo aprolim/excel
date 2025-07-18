@@ -15,36 +15,28 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static('public'));
 app.use(express.json());
 
-// Función para asignar CIs repetidos
-function asignarCIsRepetidos(totalRepeticiones, cis, startCiIndex = 0) {
-    const asignaciones = [];
+// Función para asignar CIs con repetición
+function asignarCIsConRepeticion(totalRepeticiones, cis) {
+    const resultado = [];
+    let ciIndex = 0;
     let repeticionesRestantes = totalRepeticiones;
-    let ciIndex = startCiIndex;
     const totalCIs = cis.length;
 
     while (repeticionesRestantes > 0) {
         const ciActual = cis[ciIndex % totalCIs];
         const repeticiones = Math.min(repeticionesRestantes, MAX_REPETICIONES);
         
-        // Agregar el CI repetido las veces necesarias
-        for (let i = 0; i < repeticiones; i++) {
-            asignaciones.push(ciActual);
-        }
+        resultado.push({
+            ci: ciActual,
+            repeticiones: repeticiones
+        });
 
         repeticionesRestantes -= repeticiones;
         ciIndex++;
     }
 
-    return {
-        asignaciones,
-        nextCiIndex: ciIndex % totalCIs
-    };
+    return resultado;
 }
-
-// Ruta principal
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
 
 // Ruta para procesar
 app.post('/procesar', upload.fields([
@@ -65,26 +57,20 @@ app.post('/procesar', upload.fields([
 
         // Procesar datos
         const resultado = [];
-        let ciIndex = 0;
+        
+        // Eliminar valores nulos o vacíos de la lista de CIs
+        const cisFiltrados = cis.filter(ci => ci && ci.toString().trim() !== '');
 
         for (const row of datosJson.slice(1)) { // Saltar encabezado
             const valor = row[0];
             const totalRepeticiones = parseInt(row[1]) || 1;
 
-            // Asignar CIs repetidos
-            const { asignaciones, nextCiIndex } = asignarCIsRepetidos(totalRepeticiones, cis, ciIndex);
-            ciIndex = nextCiIndex;
-
-            // Agrupar por CI para mostrar en el Excel
-            const grupos = {};
-            asignaciones.forEach(ci => {
-                if (!grupos[ci]) grupos[ci] = 0;
-                grupos[ci]++;
-            });
+            // Asignar CIs con repetición
+            const asignaciones = asignarCIsConRepeticion(totalRepeticiones, cisFiltrados);
 
             // Agregar al resultado
-            Object.entries(grupos).forEach(([ci, cantidad]) => {
-                resultado.push([valor, cantidad, ci]);
+            asignaciones.forEach(asig => {
+                resultado.push([valor, asig.repeticiones, asig.ci]);
             });
         }
 
@@ -114,7 +100,7 @@ async function leerExcel(filePath, sheetIndex, flatten = false) {
 async function generarExcel(data) {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([
-        ['Dato Original', 'Cantidad', 'CI Asignado'],
+        ['Dato Original', 'Repeticiones', 'CI Asignado'],
         ...data
     ]);
     XLSX.utils.book_append_sheet(workbook, worksheet, "Resultado");
