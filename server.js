@@ -46,62 +46,83 @@ app.post('/procesar', upload.fields([
             throw new Error('Faltan archivos requeridos');
         }
 
-        // 2. Procesar archivo de datos
+        // 2. Procesar archivo de datos (sin encabezados)
         const datosPath = req.files['datosFile'][0].path;
         const datosWorkbook = XLSX.readFile(datosPath);
         const datosSheetName = datosWorkbook.SheetNames[0];
         const datosSheet = datosWorkbook.Sheets[datosSheetName];
-        const datos = XLSX.utils.sheet_to_json(datosSheet, { header: 1, blankrows: false });
         
-        // Filtrar filas vacías
-        const datosFiltrados = datos.filter(row => row.length > 0 && row[0] !== undefined);
+        // Leer como matriz de valores (array de arrays)
+        const datos = XLSX.utils.sheet_to_json(datosSheet, { header: 1 });
+        console.log("[Datos] Filas brutas:", datos.length);
         
-        // 3. Procesar archivo de CIs
+        // Filtrar filas vacías y con menos de 2 columnas
+        const datosFiltrados = datos.filter(row => 
+            Array.isArray(row) && 
+            row.length >= 2 && 
+            row[0] !== undefined && 
+            row[0] !== null
+        );
+        
+        console.log("[Datos] Filas válidas:", datosFiltrados.length);
+        if (datosFiltrados.length === 0) {
+            throw new Error('El archivo de datos no contiene filas válidas');
+        }
+
+        // 3. Procesar archivo de CIs (sin encabezados)
         const ciPath = req.files['ciFile'][0].path;
         const ciWorkbook = XLSX.readFile(ciPath);
         const ciSheetName = ciWorkbook.SheetNames[0];
         const ciSheet = ciWorkbook.Sheets[ciSheetName];
-        const cisData = XLSX.utils.sheet_to_json(ciSheet, { header: 1, blankrows: false });
         
-        // Extraer CIs válidos
-        const cis = cisData
-            .flat()
-            .filter(ci => ci !== null && ci !== undefined && ci !== '')
+        // Leer como matriz de valores (array de arrays)
+        const cisBrutos = XLSX.utils.sheet_to_json(ciSheet, { header: 1 });
+        
+        // Extraer todos los valores de la primera columna
+        const cis = cisBrutos
+            .map(row => row[0])  // Solo primera columna
+            .filter(ci => 
+                ci !== null && 
+                ci !== undefined && 
+                ci !== '' && 
+                !isNaN(ci)  // Filtrar valores no numéricos
+            )
             .map(ci => ci.toString().trim());
         
+        console.log("[CIs] Valores encontrados:", cis);
         if (cis.length === 0) {
-            throw new Error('No se encontraron CIs válidos en el archivo');
+            throw new Error('No se encontraron CIs válidos en la primera columna');
         }
 
         // 4. Procesar cada registro
-        const resultado = [['Dato Original', 'CI Asignado', 'Repeticiones Asignadas']];
-        let filasProcesadas = 0;
+        const resultado = [
+            ['Dato Original', 'CI Asignado', 'Repeticiones Asignadas']
+        ];
         
-        for (let i = 0; i < datosFiltrados.length; i++) {
-            const row = datosFiltrados[i];
+        for (const [index, row] of datosFiltrados.entries()) {
+            const valor = row[0]?.toString().trim() || `Dato ${index + 1}`;
+            const repeticiones = parseInt(row[1]);
             
-            // Saltar encabezados si existen
-            if (i === 0 && isNaN(parseInt(row[1]))) continue;
-            
-            const valor = row[0]?.toString().trim() || `Dato ${i+1}`;
-            const total = parseInt(row[1]);
-            
-            if (isNaN(total) || total <= 0) {
-                console.warn(`Fila ${i+1} ignorada: repeticiones inválidas (${row[1]})`);
+            if (isNaN(repeticiones) {
+                console.warn(`Fila ${index + 1}: Valor inválido en repeticiones (${row[1]})`);
                 continue;
             }
             
-            const grupos = distribuirCIs(total, cis);
+            if (repeticiones <= 0) {
+                console.warn(`Fila ${index + 1}: Repeticiones debe ser mayor a 0 (${repeticiones})`);
+                continue;
+            }
+            
+            console.log(`Procesando: ${valor} (${repeticiones} repeticiones)`);
+            const grupos = distribuirCIs(repeticiones, cis);
             
             grupos.forEach(grupo => {
                 resultado.push([valor, grupo.ci, grupo.repeticiones]);
             });
-            
-            filasProcesadas++;
         }
 
-        if (filasProcesadas === 0) {
-            throw new Error('No se procesó ninguna fila válida');
+        if (resultado.length === 1) {
+            throw new Error('No se procesaron filas válidas. Verifique formato: Col1=Valor, Col2=Número');
         }
 
         // 5. Generar resultado
@@ -114,6 +135,7 @@ app.post('/procesar', upload.fields([
         XLSX.writeFile(workbook, outputPath);
         
         console.log("Archivo generado:", outputPath);
+        console.log("Total registros:", resultado.length - 1); // Restar encabezado
 
         // 6. Enviar respuesta
         res.download(outputPath, 'grupos_asignados.xlsx', (err) => {
@@ -130,5 +152,10 @@ app.post('/procesar', upload.fields([
 });
 
 app.listen(PORT, () => {
-    console.log(`Servidor iniciado en http://localhost:${PORT}`);
+    console.log(`\n=================================`);
+    console.log(`  Servidor iniciado en puerto ${PORT}`);
+    console.log(`  Esperando archivos sin encabezados`);
+    console.log(`  Formato datos: Col1=Valor, Col2=Repeticiones`);
+    console.log(`  Formato CIs: Col1=CI (solo números)`);
+    console.log(`=================================\n`);
 });
