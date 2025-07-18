@@ -8,31 +8,52 @@ const app = express();
 const upload = multer({ dest: 'uploads/' });
 
 // Configuración
-const MAX_REPETICIONES = 8;
+const MAX_POR_GRUPO = 8;
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.static('public'));
 app.use(express.json());
 
-// Función para asignar CIs con repetición
-function asignarCIsConRepeticion(totalRepeticiones, cis) {
+// Función para distribución perfectamente equilibrada
+function distribuirCIs(totalRepeticiones, cis) {
     const resultado = [];
-    let ciIndex = 0;
-    let repeticionesRestantes = totalRepeticiones;
     const totalCIs = cis.length;
-
-    while (repeticionesRestantes > 0) {
-        const ciActual = cis[ciIndex % totalCIs];
-        const repeticiones = Math.min(repeticionesRestantes, MAX_REPETICIONES);
+    
+    if (totalCIs === 0) return resultado;
+    
+    // Calcular repeticiones por CI de forma equilibrada
+    let repeticionesPorCI = Math.floor(totalRepeticiones / totalCIs);
+    let repeticionesExtra = totalRepeticiones % totalCIs;
+    
+    // Ajustar para no exceder el máximo por grupo
+    while (repeticionesPorCI + (repeticionesExtra > 0 ? 1 : 0) > MAX_POR_GRUPO) {
+        repeticionesPorCI = MAX_POR_GRUPO;
+        repeticionesExtra = totalRepeticiones - (repeticionesPorCI * totalCIs);
         
-        resultado.push({
-            ci: ciActual,
-            repeticiones: repeticiones
-        });
+        if (repeticionesExtra < 0) {
+            repeticionesPorCI = Math.floor(totalRepeticiones / totalCIs);
+            repeticionesExtra = totalRepeticiones % totalCIs;
+            break;
+        }
+    }
 
-        repeticionesRestantes -= repeticiones;
-        ciIndex++;
+    // Asignar repeticiones
+    for (let i = 0; i < totalCIs; i++) {
+        let repeticiones = repeticionesPorCI;
+        if (i < repeticionesExtra) {
+            repeticiones++;
+        }
+
+        // Dividir en grupos de máximo 8
+        while (repeticiones > 0) {
+            const asignar = Math.min(repeticiones, MAX_POR_GRUPO);
+            resultado.push({
+                ci: cis[i],
+                veces: asignar
+            });
+            repeticiones -= asignar;
+        }
     }
 
     return resultado;
@@ -55,22 +76,24 @@ app.post('/procesar', upload.fields([
             leerExcel(req.files['ciFile'][0].path, 0, true)
         ]);
 
+        // Filtrar CIs válidos
+        const cisFiltrados = cis.filter(ci => ci && ci.toString().trim() !== '');
+
         // Procesar datos
         const resultado = [];
         
-        // Eliminar valores nulos o vacíos de la lista de CIs
-        const cisFiltrados = cis.filter(ci => ci && ci.toString().trim() !== '');
-
         for (const row of datosJson.slice(1)) { // Saltar encabezado
             const valor = row[0];
             const totalRepeticiones = parseInt(row[1]) || 1;
 
-            // Asignar CIs con repetición
-            const asignaciones = asignarCIsConRepeticion(totalRepeticiones, cisFiltrados);
+            // Distribuir CIs
+            const asignaciones = distribuirCIs(totalRepeticiones, cisFiltrados);
 
-            // Agregar al resultado
+            // Agregar al resultado (sin columna de repeticiones)
             asignaciones.forEach(asig => {
-                resultado.push([valor, asig.repeticiones, asig.ci]);
+                for (let i = 0; i < asig.veces; i++) {
+                    resultado.push([valor, asig.ci]);
+                }
             });
         }
 
@@ -100,7 +123,7 @@ async function leerExcel(filePath, sheetIndex, flatten = false) {
 async function generarExcel(data) {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([
-        ['Dato Original', 'Repeticiones', 'CI Asignado'],
+        ['Dato Original', 'CI Asignado'],
         ...data
     ]);
     XLSX.utils.book_append_sheet(workbook, worksheet, "Resultado");
