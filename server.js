@@ -8,55 +8,37 @@ const app = express();
 const upload = multer({ dest: 'uploads/' });
 
 // Configuración
-const MAX_POR_GRUPO = 8;
+const MAX_REPETICIONES = 8;
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.static('public'));
 app.use(express.json());
 
-// Función para distribución equilibrada
-function distribuirEquilibrado(total, maxPorGrupo = MAX_POR_GRUPO) {
-    if (total <= maxPorGrupo) return [total];
-    
-    const numGrupos = Math.ceil(total / maxPorGrupo);
-    const base = Math.floor(total / numGrupos);
-    let resto = total % numGrupos;
-    
-    const grupos = Array(numGrupos).fill(base);
-    
-    // Distribuir el resto
-    for (let i = 0; i < resto; i++) {
-        grupos[i]++;
-    }
-    
-    // Ajustar para no exceder el máximo
-    return grupos.map(g => Math.min(g, maxPorGrupo));
-}
-function distribuirCIs(totalRepeticiones, cis, startIndex, maxPorGrupo = 8) {
-    const grupos = [];
-    let ciIndex = startIndex;
-    let remaining = totalRepeticiones;
-    const ciCount = cis.length;
+// Función para asignar CIs repetidos
+function asignarCIsRepetidos(totalRepeticiones, cis, startCiIndex = 0) {
+    const asignaciones = [];
+    let repeticionesRestantes = totalRepeticiones;
+    let ciIndex = startCiIndex;
+    const totalCIs = cis.length;
 
-    while (remaining > 0) {
-        const cantidad = Math.min(remaining, maxPorGrupo);
-        const ciGrupo = [];
+    while (repeticionesRestantes > 0) {
+        const ciActual = cis[ciIndex % totalCIs];
+        const repeticiones = Math.min(repeticionesRestantes, MAX_REPETICIONES);
         
-        for (let i = 0; i < cantidad; i++) {
-            ciGrupo.push(cis[ciIndex % ciCount]);
-            ciIndex++;
+        // Agregar el CI repetido las veces necesarias
+        for (let i = 0; i < repeticiones; i++) {
+            asignaciones.push(ciActual);
         }
-        
-        grupos.push({
-            cantidad,
-            cis: ciGrupo,
-            nextIndex: ciIndex
-        });
-        remaining -= cantidad;
+
+        repeticionesRestantes -= repeticiones;
+        ciIndex++;
     }
 
-    return grupos;
+    return {
+        asignaciones,
+        nextCiIndex: ciIndex % totalCIs
+    };
 }
 
 // Ruta principal
@@ -89,19 +71,20 @@ app.post('/procesar', upload.fields([
             const valor = row[0];
             const totalRepeticiones = parseInt(row[1]) || 1;
 
-            // Distribuir los CIs en bloques consecutivos
-            const grupos = distribuirCIs(totalRepeticiones, cis, ciIndex);
-            
-            // Actualizar el índice para el próximo dato
-            ciIndex = grupos[grupos.length - 1].nextIndex;
+            // Asignar CIs repetidos
+            const { asignaciones, nextCiIndex } = asignarCIsRepetidos(totalRepeticiones, cis, ciIndex);
+            ciIndex = nextCiIndex;
+
+            // Agrupar por CI para mostrar en el Excel
+            const grupos = {};
+            asignaciones.forEach(ci => {
+                if (!grupos[ci]) grupos[ci] = 0;
+                grupos[ci]++;
+            });
 
             // Agregar al resultado
-            grupos.forEach(grupo => {
-                resultado.push([
-                    valor,
-                    grupo.cantidad,
-                    grupo.cis.join(', ')
-                ]);
+            Object.entries(grupos).forEach(([ci, cantidad]) => {
+                resultado.push([valor, cantidad, ci]);
             });
         }
 
@@ -131,7 +114,7 @@ async function leerExcel(filePath, sheetIndex, flatten = false) {
 async function generarExcel(data) {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([
-        ['Dato Original', 'Cantidad', 'CIs Asignados'],
+        ['Dato Original', 'Cantidad', 'CI Asignado'],
         ...data
     ]);
     XLSX.utils.book_append_sheet(workbook, worksheet, "Resultado");
