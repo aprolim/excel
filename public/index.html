@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procesador de Excel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Procesador de Archivos Excel</h1>
+            <p class="subtitle">Distribución equilibrada de CIs</p>
+        </header>
+
+        <main>
+            <section class="card instructions">
+                <h2>Instrucciones</h2>
+                <ol>
+                    <li>Suba un archivo Excel con los datos (primera columna: valores, segunda columna: repeticiones)</li>
+                    <li>Suba un archivo Excel con los CIs (en la primera columna)</li>
+                    <li>El sistema distribuirá los CIs de forma equilibrada (máximo 8 por grupo)</li>
+                </ol>
+            </section>
+
+            <form id="uploadForm" class="card">
+                <div class="form-group">
+                    <label for="datosFile">Archivo de datos:</label>
+                    <input type="file" id="datosFile" name="datosFile" accept=".xlsx,.xls" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ciFile">Archivo de CIs:</label>
+                    <input type="file" id="ciFile" name="ciFile" accept=".xlsx,.xls" required>
+                </div>
+                
+                <button type="submit" class="btn-primary">
+                    <span class="btn-text">Procesar Archivos</span>
+                    <span class="spinner hidden"></span>
+                </button>
+            </form>
+
+            <div id="resultContainer" class="card hidden">
+                <h2>Resultado Generado</h2>
+                <p>El archivo se ha generado correctamente. Descargando...</p>
+            </div>
+        </main>
+
+        <footer>
+            <p>Sistema de procesamiento de Excel &copy; 2023</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
