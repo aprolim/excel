@@ -18,8 +18,8 @@ app.use(express.json());
 // Función para asignar CIs correctamente
 function asignarCIs(totalRepeticiones, cis) {
     const resultado = [];
-    let ciIndex = 0;
     let repeticionesAsignadas = 0;
+    let ciIndex = 0;
     const totalCIs = cis.length;
 
     if (totalCIs === 0) return resultado;
@@ -27,11 +27,11 @@ function asignarCIs(totalRepeticiones, cis) {
     while (repeticionesAsignadas < totalRepeticiones) {
         const ciActual = cis[ciIndex % totalCIs];
         const repeticiones = Math.min(
-            MAX_POR_GRUPO, 
+            MAX_POR_GRUPO,
             totalRepeticiones - repeticionesAsignadas
         );
 
-        // Agregar el CI repetido las veces necesarias
+        // Agregar el CI las veces necesarias
         for (let i = 0; i < repeticiones; i++) {
             resultado.push(ciActual);
         }
@@ -60,14 +60,21 @@ app.post('/procesar', upload.fields([
             leerExcel(req.files['ciFile'][0].path, 0, true)
         ]);
 
-        // Filtrar CIs válidos
-        const cisFiltrados = cis.filter(ci => ci && ci.toString().trim() !== '');
+        // Filtrar y limpiar CIs
+        const cisFiltrados = cis.filter(ci => 
+            ci !== null && ci !== undefined && ci.toString().trim() !== ''
+        ).map(ci => ci.toString().trim());
+
+        // Verificar que hay CIs
+        if (cisFiltrados.length === 0) {
+            return res.status(400).json({ error: 'El archivo de CIs está vacío o no tiene datos válidos' });
+        }
 
         // Procesar datos
         const resultado = [];
         
         for (const row of datosJson.slice(1)) { // Saltar encabezado
-            const valor = row[0];
+            const valor = row[0]?.toString().trim() || 'Sin nombre';
             const totalRepeticiones = parseInt(row[1]) || 1;
 
             // Asignar CIs
