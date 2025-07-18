@@ -2,196 +2,108 @@ const express = require('express');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const path = require('path');
-const fs = require('fs');
-
 const app = express();
-const upload = multer({ dest: 'uploads/' });
+const port = 3000;
 
-const MAX_GROUP_SIZE = 8;
-const PORT = process.env.PORT || 3000;
+// Configurar multer para manejar archivos subidos
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
+// Middleware para servir archivos estáticos
 app.use(express.static('public'));
-app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-function distribuirCIs(totalRepeticiones, cis) {
-    const grupos = [];
-    let repAsignadas = 0;
-    let ciIndex = 0;
-    
-    while (repAsignadas < totalRepeticiones) {
-        const repsEnGrupo = Math.min(MAX_GROUP_SIZE, totalRepeticiones - repAsignadas);
-        const ci = cis[ciIndex % cis.length];
-        
-        grupos.push({
-            ci,
-            repeticiones: repsEnGrupo
-        });
-        
-        repAsignadas += repsEnGrupo;
-        ciIndex++;
-    }
-    
-    return grupos;
-}
+// Ruta principal - muestra el formulario HTML
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-function obtenerPrimeraColumna(datos) {
-    return datos
-        .flatMap(row => {
-            // Buscar el primer valor válido en la fila
-            for (const cell of row) {
-                if (cell !== null && cell !== undefined && cell !== '') {
-                    return [cell];
-                }
-            }
-            return [];
-        })
-        .map(ci => ci.toString().trim());
-}
-
+// Ruta para procesar los archivos
 app.post('/procesar', upload.fields([
-    { name: 'datosFile', maxCount: 1 },
-    { name: 'ciFile', maxCount: 1 }
-]), async (req, res) => {
-    console.log("\n====== NUEVA SOLICITUD RECIBIDA ======");
-    console.log("Procesando archivos...");
-    
+    { name: 'archivoB', maxCount: 1 },
+    { name: 'archivoA', maxCount: 1 }
+]), (req, res) => {
     try {
-        // 1. Verificar archivos recibidos
-        if (!req.files['datosFile'] || !req.files['ciFile']) {
-            throw new Error('Faltan archivos requeridos');
+        // Obtener los archivos subidos
+        const archivoB = req.files['archivoB'][0];
+        const archivoA = req.files['archivoA'][0];
+        
+        if (!archivoB || !archivoA) {
+            return res.status(400).send('Debe subir ambos archivos');
         }
-
-        // 2. Procesar archivo de datos
-        const datosPath = req.files['datosFile'][0].path;
-        console.log("Leyendo archivo de datos:", datosPath);
         
-        const datosWorkbook = XLSX.readFile(datosPath);
-        const datosSheetName = datosWorkbook.SheetNames[0];
-        const datosSheet = datosWorkbook.Sheets[datosSheetName];
+        // Procesar archivo B (códigos únicos)
+        const wbB = XLSX.read(archivoB.buffer, { type: 'buffer' });
+        const wsB = wbB.Sheets[wbB.SheetNames[0]];
+        const dataB = XLSX.utils.sheet_to_json(wsB, { header: 1 });
+        const codigos = dataB.flat().filter(Boolean);
+        let codigoIndex = 0;
         
-        // Leer como matriz de valores
-        const datos = XLSX.utils.sheet_to_json(datosSheet, { header: 1, defval: null });
-        console.log("Datos brutos leídos:", datos);
+        // Procesar archivo A (valores repetidos)
+        const wbA = XLSX.read(archivoA.buffer, { type: 'buffer' });
+        const wsA = wbA.Sheets[wbA.SheetNames[0]];
+        const dataA = XLSX.utils.sheet_to_json(wsA, { header: 1 });
+        const valores = dataA.flat().filter(Boolean);
         
-        // Filtrar filas vacías
-        const datosFiltrados = datos.filter(row => 
-            Array.isArray(row) && 
-            row.some(cell => cell !== null && cell !== undefined && cell !== '')
-        );
-        
-        console.log("Datos filtrados:", datosFiltrados);
-        
-        if (datosFiltrados.length === 0) {
-            throw new Error('El archivo de datos está vacío o no se reconocieron filas válidas');
-        }
-
-        // 3. Procesar archivo de CIs
-        const ciPath = req.files['ciFile'][0].path;
-        console.log("Leyendo archivo de CIs:", ciPath);
-        
-        const ciWorkbook = XLSX.readFile(ciPath);
-        const ciSheetName = ciWorkbook.SheetNames[0];
-        const ciSheet = ciWorkbook.Sheets[ciSheetName];
-        
-        const cisBrutos = XLSX.utils.sheet_to_json(ciSheet, { header: 1, defval: null });
-        console.log("CIs brutos:", cisBrutos);
-        
-        const cis = obtenerPrimeraColumna(cisBrutos);
-        console.log("CIs válidos:", cis);
-        
-        if (cis.length === 0) {
-            throw new Error('No se encontraron CIs válidos. Asegúrese de que haya valores en la primera columna');
-        }
-
-        // 4. Procesar cada registro
-        const resultado = [
-            ['Dato Original', 'CI Asignado', 'Repeticiones Asignadas']
-        ];
-        let filasProcesadas = 0;
-        
-        for (const [index, row] of datosFiltrados.entries()) {
-            // Obtener valor y repeticiones de las primeras dos columnas
-            const valor = row[0] !== null && row[0] !== undefined 
-                ? row[0].toString().trim() 
-                : `Dato ${index + 1}`;
-            
-            // Buscar el valor numérico en la fila (puede estar en cualquier columna)
-            let repeticiones = null;
-            for (let i = 1; i < row.length; i++) {
-                const num = parseInt(row[i]);
-                if (!isNaN(num)) {
-                    repeticiones = num;
-                    break;
-                }
-            }
-            
-            if (repeticiones === null) {
-                console.warn(`Fila ${index + 1} ignorada: No se encontró número de repeticiones`);
-                continue;
-            }
-            
-            if (repeticiones <= 0) {
-                console.warn(`Fila ${index + 1} ignorada: Repeticiones debe ser mayor a 0 (${repeticiones})`);
-                continue;
-            }
-            
-            console.log(`Procesando: ${valor} (${repeticiones} repeticiones)`);
-            const grupos = distribuirCIs(repeticiones, cis);
-            
-            grupos.forEach(grupo => {
-                resultado.push([valor, grupo.ci, grupo.repeticiones]);
-            });
-            
-            filasProcesadas++;
-        }
-
-        if (filasProcesadas === 0) {
-            throw new Error('No se procesaron filas válidas. Verifique que: \n- La primera columna contiene valores \n- Hay un número válido en la segunda columna (o en cualquier otra columna)');
-        }
-
-        // 5. Generar resultado
-        const workbook = XLSX.utils.book_new();
-        const worksheet = XLSX.utils.aoa_to_sheet(resultado);
-        
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Grupos Asignados");
-        
-        const outputPath = path.join(__dirname, 'resultado.xlsx');
-        XLSX.writeFile(workbook, outputPath);
-        
-        console.log("Archivo generado:", outputPath);
-        console.log("Total registros:", resultado.length - 1);
-
-        // 6. Enviar respuesta
-        res.download(outputPath, 'grupos_asignados.xlsx', (err) => {
-            // Limpieza de archivos temporales
-            [datosPath, ciPath, outputPath].forEach(file => {
-                if (fs.existsSync(file)) {
-                    try {
-                        fs.unlinkSync(file);
-                        console.log("Archivo temporal eliminado:", file);
-                    } catch (cleanError) {
-                        console.error("Error eliminando temporal:", cleanError);
-                    }
-                }
-            });
+        // Contar ocurrencias y posiciones
+        const grupos = {};
+        valores.forEach((valor, idx) => {
+            if (!grupos[valor]) grupos[valor] = { total: 0, posiciones: [] };
+            grupos[valor].total++;
+            grupos[valor].posiciones.push(idx);
         });
-
+        
+        // Preparar resultados (manteniendo orden original)
+        const resultado = new Array(valores.length);
+        
+        // Procesar cada grupo
+        Object.entries(grupos).forEach(([valor, data]) => {
+            const total = data.total;
+            const numGrupos = Math.ceil(total / 8);
+            
+            // Calcular distribución
+            const tamBase = Math.floor(total / numGrupos);
+            const extra = total % numGrupos;
+            
+            // Obtener códigos necesarios
+            const cods = codigos.slice(codigoIndex, codigoIndex + numGrupos);
+            codigoIndex += numGrupos;
+            
+            // Asignar a cada grupo
+            let start = 0;
+            for (let i = 0; i < numGrupos; i++) {
+                const tamGrupo = tamBase + (i < extra ? 1 : 0);
+                const end = start + tamGrupo;
+                
+                // Asignar código a todas las posiciones del grupo
+                for (let j = start; j < end; j++) {
+                    const pos = data.posiciones[j];
+                    resultado[pos] = [valor, cods[i]];
+                }
+                start = end;
+            }
+        });
+        
+        // Crear libro de salida
+        const wsResult = XLSX.utils.aoa_to_sheet(resultado);
+        const wbResult = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wbResult, wsResult, 'Resultado');
+        
+        // Generar buffer de salida
+        const buffer = XLSX.write(wbResult, { type: 'buffer', bookType: 'xlsx' });
+        
+        // Enviar el archivo
+        res.setHeader('Content-Disposition', 'attachment; filename="resultado.xlsx"');
+        res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(buffer);
+        
     } catch (error) {
-        console.error("ERROR:", error.message);
-        res.status(500).json({ 
-            error: error.message,
-            recomendacion: "Verifique el formato de los archivos: \n- Datos: Primera columna=valores, Segunda (o cualquier columna)=números \n- CIs: Primera columna=valores"
-        });
+        console.error(error);
+        res.status(500).send('Error procesando los archivos: ' + error.message);
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`\n=================================`);
-    console.log(`  Servidor iniciado en puerto ${PORT}`);
-    console.log(`  Formato esperado para datos:`);
-    console.log(`    Columna 1: Valor (texto)`);
-    console.log(`    Columna 2: Repeticiones (número)`);
-    console.log(`  Formato esperado para CIs:`);
-    console.log(`    Columna 1: CI (texto o número)`);
-    console.log(`=================================\n`);
+// Iniciar servidor
+app.listen(port, () => {
+    console.log(`Servidor corriendo en http://localhost:${port}`);
 });
