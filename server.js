@@ -103,7 +103,7 @@ app.post('/procesar', upload.fields([
             const valor = row[0]?.toString().trim() || `Dato ${index + 1}`;
             const repeticiones = parseInt(row[1]);
             
-            if (isNaN(repeticiones) {
+            if (isNaN(repeticiones)) {
                 console.warn(`Fila ${index + 1}: Valor inválido en repeticiones (${row[1]})`);
                 continue;
             }
