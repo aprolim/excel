@@ -18,14 +18,14 @@ function asignarCIs(totalRepeticiones, cis) {
     let repeticionesAsignadas = 0;
     let ciIndex = 0;
     
-    console.log(`\nAsignando ${totalRepeticiones} repeticiones con ${cis.length} CIs disponibles`);
-    console.log("Lista de CIs:", cis);
+    console.log(`[AsignarCIs] Iniciando asignación para ${totalRepeticiones} repeticiones`);
+    console.log(`[AsignarCIs] CIs disponibles: ${cis.join(', ')}`);
     
     while (repeticionesAsignadas < totalRepeticiones) {
         const repeticiones = Math.min(MAX_REPETICIONES, totalRepeticiones - repeticionesAsignadas);
         const ci = cis[ciIndex % cis.length];
         
-        console.log(`- Asignando bloque de ${repeticiones} repeticiones al CI: ${ci}`);
+        console.log(`[AsignarCIs] Asignando ${repeticiones} repeticiones a ${ci}`);
         
         for (let i = 0; i < repeticiones; i++) {
             resultado.push(ci);
@@ -35,17 +35,7 @@ function asignarCIs(totalRepeticiones, cis) {
         ciIndex++;
     }
     
-    // Calcular estadísticas de asignación
-    const conteo = {};
-    resultado.forEach(ci => {
-        conteo[ci] = (conteo[ci] || 0) + 1;
-    });
-    
-    console.log("Resumen de asignaciones:");
-    Object.entries(conteo).forEach(([ci, count]) => {
-        console.log(`  ${ci}: ${count} repeticiones`);
-    });
-    
+    console.log(`[AsignarCIs] Asignación completada. Total: ${resultado.length} registros`);
     return resultado;
 }
 
@@ -53,82 +43,127 @@ app.post('/procesar', upload.fields([
     { name: 'datosFile', maxCount: 1 },
     { name: 'ciFile', maxCount: 1 }
 ]), async (req, res) => {
+    console.log("\n====== NUEVA SOLICITUD RECIBIDA ======");
+    
     try {
-        console.log("\n===== INICIO DE PROCESAMIENTO =====");
+        // 1. Verificar archivos recibidos
+        console.log("[Procesar] Archivos recibidos:", req.files);
+        if (!req.files['datosFile'] || !req.files['ciFile']) {
+            throw new Error('Faltan archivos requeridos');
+        }
+
+        // 2. Procesar archivo de datos
+        const datosPath = req.files['datosFile'][0].path;
+        console.log("[Procesar] Leyendo archivo de datos:", datosPath);
         
-        // Leer archivo de datos
-        const datosWorkbook = XLSX.readFile(req.files['datosFile'][0].path);
+        const datosWorkbook = XLSX.readFile(datosPath);
+        console.log("[Procesar] Hojas disponibles en datosFile:", datosWorkbook.SheetNames);
+        
         const datosSheet = datosWorkbook.Sheets[datosWorkbook.SheetNames[0]];
         const datos = XLSX.utils.sheet_to_json(datosSheet, { header: 1 });
         
-        console.log("\nDatos leídos del archivo principal:");
-        console.table(datos.slice(0, 5)); // Mostrar primeras 5 filas
+        console.log("[Procesar] Datos brutos leídos (primeras 5 filas):", datos.slice(0, 5));
+        console.log("[Procesar] Total de filas en datos:", datos.length);
 
-        // Leer archivo de CIs
-        const ciWorkbook = XLSX.readFile(req.files['ciFile'][0].path);
+        // 3. Procesar archivo de CIs
+        const ciPath = req.files['ciFile'][0].path;
+        console.log("[Procesar] Leyendo archivo de CIs:", ciPath);
+        
+        const ciWorkbook = XLSX.readFile(ciPath);
+        console.log("[Procesar] Hojas disponibles en ciFile:", ciWorkbook.SheetNames);
+        
         const ciSheet = ciWorkbook.Sheets[ciWorkbook.SheetNames[0]];
-        let cis = XLSX.utils.sheet_to_json(ciSheet, { header: 1 })
+        const cisBrutos = XLSX.utils.sheet_to_json(ciSheet, { header: 1 });
+        
+        console.log("[Procesar] CIs brutos leídos:", cisBrutos);
+        
+        // Procesamiento robusto de CIs
+        const cis = cisBrutos
             .flat()
-            .filter(ci => ci && ci.toString().trim() !== '')
-            .map(ci => ci.toString().trim());
-        
-        // Filtrar posibles encabezados
-        if (isNaN(cis[0]) && cis.length > 1 && !isNaN(cis[1])) {
-            console.warn("Advertencia: Se detectó posible encabezado en CIs. Eliminando primera fila");
-            cis = cis.slice(1);
-        }
-        
-        console.log(`\nCIs leídos (${cis.length}):`, cis);
+            .filter(ci => ci !== null && ci !== undefined)
+            .map(ci => ci.toString().trim())
+            .filter(ci => ci !== '');
+
+        console.log("[Procesar] CIs válidos encontrados:", cis);
         
         if (cis.length === 0) {
-            throw new Error('No hay CIs válidos en el archivo');
+            throw new Error('No se encontraron CIs válidos en el archivo');
         }
 
-        // Procesar datos
+        // 4. Procesar cada registro
         const resultado = [];
+        let filasProcesadas = 0;
         
-        for (let i = 1; i < datos.length; i++) {
-            const fila = datos[i];
-            if (!fila || fila.length < 2) continue;
+        for (let i = 0; i < datos.length; i++) {
+            // Saltar filas vacías o encabezados
+            if (i === 0 || !datos[i] || datos[i].length < 2) {
+                console.log(`[Procesar] Saltando fila ${i}:`, datos[i]);
+                continue;
+            }
             
-            const valor = fila[0]?.toString().trim() || 'Sin nombre';
-            const total = parseInt(fila[1]) || 1;
+            const valor = datos[i][0]?.toString().trim() || `Sin nombre (fila ${i+1})`;
+            const total = parseInt(datos[i][1]);
             
-            console.log(`\nProcesando: ${valor} (${total} repeticiones)`);
+            if (isNaN(total) || total <= 0) {
+                console.warn(`[Procesar] Valor inválido en fila ${i}:`, datos[i]);
+                continue;
+            }
             
+            console.log(`\n[Procesar] Procesando fila ${i}: ${valor} (${total} repeticiones)`);
             const asignaciones = asignarCIs(total, cis);
+            
             asignaciones.forEach(ci => {
                 resultado.push([valor, ci]);
             });
+            
+            filasProcesadas++;
         }
 
-        // Generar Excel
+        if (filasProcesadas === 0) {
+            throw new Error('No se procesó ninguna fila válida. Verifique el formato del archivo');
+        }
+
+        // 5. Generar resultado
+        console.log("[Procesar] Generando archivo de resultado...");
         const workbook = XLSX.utils.book_new();
         const worksheet = XLSX.utils.aoa_to_sheet([
             ['Dato Original', 'CI Asignado'],
             ...resultado
         ]);
+        
         XLSX.utils.book_append_sheet(workbook, worksheet, "Resultado");
         
         const outputPath = path.join(__dirname, 'resultado.xlsx');
         XLSX.writeFile(workbook, outputPath);
         
-        console.log("\nArchivo resultado generado:", outputPath);
-        console.log("===== FIN DE PROCESAMIENTO =====\n");
-        
-        res.download(outputPath, () => {
+        console.log("[Procesar] Archivo generado:", outputPath);
+        console.log("[Procesar] Total de registros generados:", resultado.length);
+        console.log("====== PROCESAMIENTO COMPLETADO ======\n");
+
+        // 6. Enviar respuesta
+        res.download(outputPath, 'asignaciones.xlsx', (err) => {
             // Limpieza de archivos temporales
-            fs.unlinkSync(req.files['datosFile'][0].path);
-            fs.unlinkSync(req.files['ciFile'][0].path);
+            fs.unlinkSync(datosPath);
+            fs.unlinkSync(ciPath);
             fs.unlinkSync(outputPath);
+            
+            if (err) {
+                console.error("[Procesar] Error al descargar:", err);
+            } else {
+                console.log("[Procesar] Archivos temporales eliminados");
+            }
         });
 
     } catch (error) {
-        console.error("Error en procesamiento:", error);
-        res.status(500).json({ error: error.message });
+        console.error("[Procesar] ERROR:", error.message);
+        res.status(500).json({ 
+            error: error.message,
+            detalle: "Verifique los archivos y consulte los logs del servidor"
+        });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`Servidor listo en http://localhost:${PORT}`);
+    console.log(`\nServidor iniciado en http://localhost:${PORT}`);
+    console.log("Esperando archivos...");
 });
