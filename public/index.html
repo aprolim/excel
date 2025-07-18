@@ -3,54 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Procesador de Excel</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Asignador de Códigos</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f5f7fa; color: #333; padding: 20px; }
+        .container { max-width: 800px; margin: 30px auto; background: white; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); padding: 30px; }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        .description { background-color: #e8f4fd; border-left: 4px solid #3498db; padding: 15px; margin-bottom: 30px; border-radius: 0 5px 5px 0; }
+        .form-group { margin-bottom: 25px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; }
+        .file-upload { border: 2px dashed #3498db; border-radius: 8px; padding: 25px; text-align: center; background-color: #f8fafd; cursor: pointer; }
+        .file-name { margin-top: 10px; font-size: 14px; color: #7f8c8d; }
+        button { background: #3498db; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600; margin-top: 10px; }
+        button:hover { background: #2980b9; }
+        .examples { margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px; }
+        .example-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .example-table th, .example-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .example-table th { background-color: #f2f2f2; font-weight: 600; }
+        .instructions { margin: 25px 0; background-color: #f9f9f9; padding: 20px; border-radius: 8px; border-left: 4px solid #27ae60; }
+        .success-message { display: none; background-color: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin-top: 20px; text-align: center; }
+        .error-message { display: none; background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin-top: 20px; }
+    </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Procesador de Archivos Excel</h1>
-            <p class="subtitle">Distribución equilibrada de CIs en grupos de 8</p> <!-- Cambio en el subtítulo -->
-        </header>
-
-        <main>
-            <section class="card instructions">
-                <h2>Instrucciones</h2>
-                <ol>
-                    <li>Suba un archivo Excel con los datos (primera columna: valores, segunda columna: repeticiones)</li>
-                    <li>Suba un archivo Excel con los CIs (en la primera columna)</li>
-                    <li>El sistema distribuirá los CIs en grupos de máximo 8 repeticiones</li> <!-- Instrucción más clara -->
-                </ol>
-            </section>
-
-            <form id="uploadForm" class="card">
-                <div class="form-group">
-                    <label for="datosFile">Archivo de datos:</label>
-                    <input type="file" id="datosFile" name="datosFile" accept=".xlsx,.xls" required>
+        <h1>Asignador de Códigos</h1>
+        
+        <div class="description">
+            <p>Asigna códigos únicos a valores repetidos agrupando hasta 8 repeticiones por código.</p>
+        </div>
+        
+        <div class="instructions">
+            <h3>Instrucciones:</h3>
+            <ol>
+                <li>Archivo B: Columna con códigos únicos (sin encabezado)</li>
+                <li>Archivo A: Columna con valores repetidos (sin encabezado)</li>
+                <li>Procesa los archivos y descarga el resultado</li>
+            </ol>
+        </div>
+        
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="archivoB">Archivo B (Códigos Únicos):</label>
+                <div class="file-upload" onclick="document.getElementById('fileB').click()">
+                    <p>📄 Haz clic para seleccionar el archivo</p>
+                    <p class="file-name" id="fileNameB">Ningún archivo seleccionado</p>
                 </div>
-                
-                <div class="form-group">
-                    <label for="ciFile">Archivo de CIs:</label>
-                    <input type="file" id="ciFile" name="ciFile" accept=".xlsx,.xls" required>
-                </div>
-                
-                <button type="submit" class="btn-primary">
-                    <span class="btn-text">Generar Grupos</span> <!-- Texto más descriptivo -->
-                    <span class="spinner hidden"></span>
-                </button>
-            </form>
-
-            <div id="resultContainer" class="card hidden">
-                <h2>Resultado Generado</h2>
-                <p>El archivo se ha generado correctamente. Descargando...</p>
+                <input type="file" id="fileB" name="archivoB" accept=".xlsx,.xls" style="display: none;" required>
             </div>
-        </main>
-
-        <footer>
-            <p>Sistema de procesamiento de Excel &copy; 2023</p>
-        </footer>
+            
+            <div class="form-group">
+                <label for="archivoA">Archivo A (Valores Repetidos):</label>
+                <div class="file-upload" onclick="document.getElementById('fileA').click()">
+                    <p>📄 Haz clic para seleccionar el archivo</p>
+                    <p class="file-name" id="fileNameA">Ningún archivo seleccionado</p>
+                </div>
+                <input type="file" id="fileA" name="archivoA" accept=".xlsx,.xls" style="display: none;" required>
+            </div>
+            
+            <button type="button" onclick="procesarArchivos()">Procesar Archivos</button>
+            
+            <div class="success-message" id="successMessage">
+                ¡Archivo procesado! Descarga automática iniciada.
+            </div>
+            
+            <div class="error-message" id="errorMessage">
+                Error al procesar los archivos. Verifique los archivos e intente nuevamente.
+            </div>
+        </form>
+        
+        <div class="examples">
+            <h2>Ejemplos de Distribución</h2>
+            <table class="example-table">
+                <tr><th>Repeticiones</th><th>Códigos</th><th>Distribución</th></tr>
+                <tr><td>9</td><td>2</td><td>5 y 4</td></tr>
+                <tr><td>12</td><td>2</td><td>6 y 6</td></tr>
+                <tr><td>17</td><td>3</td><td>6, 6 y 5</td></tr>
+                <tr><td>25</td><td>4</td><td>7, 6, 6 y 6</td></tr>
+            </table>
+        </div>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        // Actualizar nombres de archivo
+        document.getElementById('fileB').addEventListener('change', function(e) {
+            document.getElementById('fileNameB').textContent = e.target.files[0]?.name || 'Ningún archivo seleccionado';
+        });
+        
+        document.getElementById('fileA').addEventListener('change', function(e) {
+            document.getElementById('fileNameA').textContent = e.target.files[0]?.name || 'Ningún archivo seleccionado';
+        });
+        
+        // Procesar archivos
+        function procesarArchivos() {
+            const fileB = document.getElementById('fileB').files[0];
+            const fileA = document.getElementById('fileA').files[0];
+            const success = document.getElementById('successMessage');
+            const error = document.getElementById('errorMessage');
+            
+            success.style.display = 'none';
+            error.style.display = 'none';
+            
+            if (!fileB || !fileA) {
+                alert('Debe seleccionar ambos archivos');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('archivoB', fileB);
+            formData.append('archivoA', fileA);
+            
+            fetch('/procesar', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Error en el servidor');
+                return response.blob();
+            })
+            .then(blob => {
+                success.style.display = 'block';
+                
+                // Descargar archivo
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'resultado.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                error.style.display = 'block';
+                error.textContent = `Error: ${err.message || 'Verifique los archivos e intente nuevamente'}`;
+            });
+        }
+    </script>
 </body>
 </html>
