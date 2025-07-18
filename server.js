@@ -33,6 +33,31 @@ function distribuirEquilibrado(total, maxPorGrupo = MAX_POR_GRUPO) {
     // Ajustar para no exceder el máximo
     return grupos.map(g => Math.min(g, maxPorGrupo));
 }
+function distribuirCIs(totalRepeticiones, cis, startIndex, maxPorGrupo = 8) {
+    const grupos = [];
+    let ciIndex = startIndex;
+    let remaining = totalRepeticiones;
+    const ciCount = cis.length;
+
+    while (remaining > 0) {
+        const cantidad = Math.min(remaining, maxPorGrupo);
+        const ciGrupo = [];
+        
+        for (let i = 0; i < cantidad; i++) {
+            ciGrupo.push(cis[ciIndex % ciCount]);
+            ciIndex++;
+        }
+        
+        grupos.push({
+            cantidad,
+            cis: ciGrupo,
+            nextIndex: ciIndex
+        });
+        remaining -= cantidad;
+    }
+
+    return grupos;
+}
 
 // Ruta principal
 app.get('/', (req, res) => {
@@ -59,22 +84,25 @@ app.post('/procesar', upload.fields([
         // Procesar datos
         const resultado = [];
         let ciIndex = 0;
-        const ciCount = cis.length;
 
         for (const row of datosJson.slice(1)) { // Saltar encabezado
             const valor = row[0];
-            const total = parseInt(row[1]) || 1;
+            const totalRepeticiones = parseInt(row[1]) || 1;
 
-            const grupos = distribuirEquilibrado(total);
+            // Distribuir los CIs en bloques consecutivos
+            const grupos = distribuirCIs(totalRepeticiones, cis, ciIndex);
+            
+            // Actualizar el índice para el próximo dato
+            ciIndex = grupos[grupos.length - 1].nextIndex;
 
-            for (const cantidad of grupos) {
-                const ciGrupo = [];
-                for (let i = 0; i < cantidad; i++) {
-                    ciGrupo.push(cis[ciIndex % ciCount]);
-                    ciIndex++;
-                }
-                resultado.push([valor, cantidad, ciGrupo.join(', ')]);
-            }
+            // Agregar al resultado
+            grupos.forEach(grupo => {
+                resultado.push([
+                    valor,
+                    grupo.cantidad,
+                    grupo.cis.join(', ')
+                ]);
+            });
         }
 
         // Crear y enviar Excel
