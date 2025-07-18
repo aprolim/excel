@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnText.textContent = 'Procesando...';
         spinner.classList.remove('hidden');
         btnSubmit.disabled = true;
+        resultContainer.classList.add('hidden');  // Ocultar resultados previos
 
         try {
             const formData = new FormData();
@@ -42,48 +43,82 @@ document.addEventListener('DOMContentLoaded', () => {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'resultado_equilibrado.xlsx';
+                a.download = 'grupos_asignados.xlsx';  // Nombre actualizado
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
                 a.remove();
             } else {
-                const error = await response.json();
-                throw new Error(error.error || 'Error al procesar los archivos');
+                // Manejar errores específicos del servidor
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error al procesar los archivos');
+                } catch (jsonError) {
+                    throw new Error('Error en el servidor: ' + response.statusText);
+                }
             }
         } catch (error) {
             showAlert(error.message, 'error');
             console.error('Error:', error);
         } finally {
             // Restaurar botón
-            btnText.textContent = 'Procesar Archivos';
+            btnText.textContent = 'Generar Grupos';
             spinner.classList.add('hidden');
             btnSubmit.disabled = false;
         }
     });
 
     function showAlert(message, type = 'success') {
+        // Eliminar alertas anteriores
+        const existingAlerts = document.querySelectorAll('.alert');
+        existingAlerts.forEach(alert => alert.remove());
+        
         const alert = document.createElement('div');
-        alert.className = `alert alert-${type}`;
+        alert.className = `alert ${type === 'error' ? 'alert-error' : 'alert-success'}`;
         alert.textContent = message;
         
-        // Estilos para el alert (podrías mover esto a CSS)
+        // Estilos
         alert.style.position = 'fixed';
         alert.style.top = '20px';
         alert.style.right = '20px';
-        alert.style.padding = '15px';
+        alert.style.padding = '15px 20px';
         alert.style.borderRadius = '5px';
         alert.style.color = 'white';
         alert.style.backgroundColor = type === 'error' ? 'var(--error-color)' : 'var(--success-color)';
-        alert.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+        alert.style.boxShadow = '0 2px 15px rgba(0,0,0,0.2)';
         alert.style.zIndex = '1000';
-        alert.style.animation = 'fadeIn 0.3s';
+        alert.style.fontSize = '16px';
+        alert.style.display = 'flex';
+        alert.style.alignItems = 'center';
+        alert.style.animation = 'fadeIn 0.3s ease-out';
+        
+        // Icono
+        const icon = document.createElement('span');
+        icon.textContent = type === 'error' ? '⚠️ ' : '✅ ';
+        icon.style.marginRight = '10px';
+        icon.style.fontSize = '20px';
+        alert.prepend(icon);
         
         document.body.appendChild(alert);
         
+        // Animación de salida
         setTimeout(() => {
-            alert.style.animation = 'fadeOut 0.3s';
+            alert.style.animation = 'fadeOut 0.3s ease-in forwards';
             setTimeout(() => alert.remove(), 300);
-        }, 3000);
+        }, 4000);
     }
+
+    // Definir animaciones CSS dinámicamente
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+    `;
+    document.head.appendChild(style);
 });
