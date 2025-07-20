@@ -1,30 +1,19 @@
 {
-  "name": "asignador-codigos",
+  "name": "excel-assigner",
   "version": "1.0.0",
-  "description": "Aplicación para asignar códigos únicos a valores repetidos en archivos Excel",
-  "main": "app.js",
+  "description": "Asigna códigos únicos desde Archivo B a Archivo A",
+  "main": "server.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "dependencies": {
-    "express": "^4.18.3",
-    "multer": "^1.4.5",
-    "xlsx": "^0.18.5"
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "xlsx": "^0.18.5",
+    "cors": "^2.8.5"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
-  },
-  "engines": {
-    "node": ">=16.0.0"
-  },
-  "keywords": [
-    "excel",
-    "codigos",
-    "asignador",
-    "nodejs"
-  ],
-  "author": "Tu Nombre",
-  "license": "MIT"
+    "nodemon": "^3.0.2"
+  }
 }
