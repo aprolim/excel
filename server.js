@@ -69,13 +69,16 @@ function assignCodes(dataA, dataB) {
     const codes = codesB.slice(codeIndex, codeIndex + codesNeeded);
     codeIndex += codesNeeded;
 
-    let remaining = count;
-    codes.forEach(code => {
-      const assignCount = Math.ceil(remaining / (codes.length - codes.indexOf(code)));
-      for (let i = 0; i < assignCount; i++) {
+    if (codes.length === 0) return;
+
+    const baseAssignments = Math.floor(count / codes.length);
+    const remainder = count % codes.length;
+
+    codes.forEach((code, i) => {
+      const assignments = baseAssignments + (i < remainder ? 1 : 0);
+      for (let j = 0; j < assignments; j++) {
         result.push({ Valor: key, Codigo: code });
       }
-      remaining -= assignCount;
     });
   });
 
