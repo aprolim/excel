@@ -1,132 +1,110 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asignador de Códigos</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .upload-area { border: 2px dashed #ccc; padding: 20px; text-align: center; margin: 20px 0; }
-        button { background: #4CAF50; color: white; border: none; padding: 10px 20px; cursor: pointer; }
-        button:hover { background: #45a049; }
-        .file-info { margin-top: 10px; }
-        #result { margin-top: 20px; }
-        .error { color: red; }
-        .success { color: green; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asignador de Códigos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+    .upload-box {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .file-input {
+      margin: 10px 0;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    #status {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .success {
+      background: #dff0d8;
+      color: #3c763d;
+    }
+    .error {
+      background: #f2dede;
+      color: #a94442;
+    }
+  </style>
 </head>
 <body>
-    <h1>Asignador de Códigos</h1>
-    <p>Sube tus archivos Excel para asignar códigos únicos a valores repetidos</p>
-    
-    <div>
-        <h3>Archivo B (Códigos Únicos):</h3>
-        <div class="upload-area" id="dropZoneB">
-            <p>Arrastra tu archivo aquí o haz clic para seleccionar</p>
-            <input type="file" id="fileB" accept=".xlsx,.xls" style="display: none;">
-            <div class="file-info" id="fileInfoB">Ningún archivo seleccionado</div>
-        </div>
-    </div>
-    
-    <div>
-        <h3>Archivo A (Valores Repetidos):</h3>
-        <div class="upload-area" id="dropZoneA">
-            <p>Arrastra tu archivo aquí o haz clic para seleccionar</p>
-            <input type="file" id="fileA" accept=".xlsx,.xls" style="display: none;">
-            <div class="file-info" id="fileInfoA">Ningún archivo seleccionado</div>
-        </div>
-    </div>
-    
-    <button id="processBtn">Procesar Archivos</button>
-    
-    <div id="result"></div>
-    
-    <script>
-        // Manejo de archivos
-        document.getElementById('dropZoneB').addEventListener('click', () => document.getElementById('fileB').click());
-        document.getElementById('dropZoneA').addEventListener('click', () => document.getElementById('fileA').click());
-        
-        ['fileB', 'fileA'].forEach(id => {
-            document.getElementById(id).addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                document.getElementById(`fileInfo${id.slice(4)}`).textContent = 
-                    file ? file.name : 'Ningún archivo seleccionado';
-            });
+  <div class="upload-box">
+    <h1>Asignar Códigos</h1>
+    <form id="uploadForm">
+      <div class="file-input">
+        <label for="fileA">Archivo A (Valores):</label>
+        <input type="file" id="fileA" name="fileA" accept=".xlsx" required>
+      </div>
+      <div class="file-input">
+        <label for="fileB">Archivo B (Códigos):</label>
+        <input type="file" id="fileB" name="fileB" accept=".xlsx" required>
+      </div>
+      <button type="submit">Procesar</button>
+    </form>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = "Procesando...";
+      statusDiv.className = "";
+
+      const formData = new FormData();
+      formData.append('fileA', document.getElementById('fileA').files[0]);
+      formData.append('fileB', document.getElementById('fileB').files[0]);
+
+      try {
+        const response = await fetch('/process', {
+          method: 'POST',
+          body: formData
         });
-        
-        // Drag and drop
-        ['dropZoneB', 'dropZoneA'].forEach(id => {
-            const dropZone = document.getElementById(id);
-            const fileInput = document.getElementById(id === 'dropZoneB' ? 'fileB' : 'fileA');
-            
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.style.borderColor = '#4CAF50';
-            });
-            
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.style.borderColor = '#ccc';
-            });
-            
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.style.borderColor = '#ccc';
-                if (e.dataTransfer.files.length) {
-                    fileInput.files = e.dataTransfer.files;
-                    const event = new Event('change');
-                    fileInput.dispatchEvent(event);
-                }
-            });
-        });
-        
-        // Procesar archivos
-        document.getElementById('processBtn').addEventListener('click', async () => {
-            const fileB = document.getElementById('fileB').files[0];
-            const fileA = document.getElementById('fileA').files[0];
-            const resultDiv = document.getElementById('result');
-            
-            resultDiv.innerHTML = '';
-            resultDiv.className = '';
-            
-            if (!fileB || !fileA) {
-                resultDiv.textContent = 'Debes seleccionar ambos archivos';
-                resultDiv.className = 'error';
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('archivoB', fileB);
-            formData.append('archivoA', fileA);
-            
-            try {
-                const response = await fetch('/procesar', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Error al procesar los archivos');
-                }
-                
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'resultado.xlsx';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                
-                resultDiv.textContent = 'Archivo procesado correctamente. Descarga iniciada.';
-                resultDiv.className = 'success';
-                
-            } catch (error) {
-                console.error('Error:', error);
-                resultDiv.textContent = error.message;
-                resultDiv.className = 'error';
-            }
-        });
-    </script>
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'resultado.xlsx';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          statusDiv.textContent = "¡Archivo generado con éxito!";
+          statusDiv.className = "success";
+        } else {
+          throw new Error(await response.text());
+        }
+      } catch (error) {
+        statusDiv.textContent = "Error: " + error.message;
+        statusDiv.className = "error";
+      }
+    });
+  </script>
 </body>
 </html>
