@@ -1,7 +1,7 @@
 {
-  "name": "excel-assigner",
+  "name": "excel-code-assigner",
   "version": "1.0.0",
-  "description": "Asigna códigos únicos desde Archivo B a Archivo A",
+  "description": "Aplicación para asignar códigos de un archivo a otro",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
