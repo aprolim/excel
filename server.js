@@ -3,6 +3,7 @@ const multer = require('multer');
 const cors = require('cors');
 const XLSX = require('xlsx');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(cors());
@@ -10,13 +11,18 @@ app.use(express.static('public'));
 
 // Configuración de Multer
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, file.originalname)
+  destination: (req, file, cb) => {
+    if (!fs.existsSync('uploads')) {
+      fs.mkdirSync('uploads');
+    }
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
 const upload = multer({ storage });
 
-// Función mejorada para asignar códigos
-function assignCodes(dataA, dataB) {
+// Función optimizada para asignación perfecta de códigos
+function assignCodesPerfectly(dataA, dataB) {
   const valuesA = dataA.map(row => row[0]).filter(Boolean);
   const codesB = dataB.map(row => row[0]).filter(Boolean);
 
@@ -30,25 +36,25 @@ function assignCodes(dataA, dataB) {
   let codeIndex = 0;
 
   // Procesar cada valor único
-  Object.keys(frequencyMap).forEach(key => {
-    const count = frequencyMap[key];
+  Object.entries(frequencyMap).forEach(([value, count]) => {
     const codesNeeded = Math.ceil(count / 8);
-    const codes = codesB.slice(codeIndex, codeIndex + codesNeeded);
-    codeIndex += codesNeeded;
-
-    if (codes.length === 0) {
-      console.warn(`No hay suficientes códigos para el valor: ${key}`);
-      return;
+    const availableCodes = codesB.length - codeIndex;
+    
+    if (availableCodes < codesNeeded) {
+      throw new Error(`No hay suficientes códigos para el valor '${value}'. Se necesitan ${codesNeeded} códigos pero solo hay ${availableCodes} disponibles.`);
     }
 
-    const base = Math.floor(count / codes.length);
-    const remainder = count % codes.length;
+    const codesToUse = codesB.slice(codeIndex, codeIndex + codesNeeded);
+    codeIndex += codesNeeded;
 
-    // Distribuir equitativamente
-    codes.forEach((code, i) => {
-      const times = i < remainder ? base + 1 : base;
+    // Distribución perfectamente equitativa
+    const baseCount = Math.floor(count / codesToUse.length);
+    const extra = count % codesToUse.length;
+
+    codesToUse.forEach((code, i) => {
+      const times = i < extra ? baseCount + 1 : baseCount;
       for (let j = 0; j < times; j++) {
-        result.push({ Valor: key, Codigo: code });
+        result.push({ Valor: value, Codigo: code });
       }
     });
   });
@@ -62,15 +68,23 @@ app.post('/process', upload.fields([
   { name: 'fileB', maxCount: 1 }
 ]), (req, res) => {
   try {
+    if (!req.files['fileA'] || !req.files['fileB']) {
+      throw new Error('Debes subir ambos archivos');
+    }
+
     // Leer archivos
     const workbookA = XLSX.readFile(req.files['fileA'][0].path);
     const workbookB = XLSX.readFile(req.files['fileB'][0].path);
 
-    // Obtener datos
-    const sheetA = workbookA.Sheets[workbookA.SheetNames[0]];
-    const sheetB = workbookB.Sheets[workbookB.SheetNames[0]];
-    const dataA = XLSX.utils.sheet_to_json(sheetA, { header: 1 });
-    const dataB = XLSX.utils.sheet_to_json(sheetB, { header: 1 });
+    // Obtener datos de la primera hoja
+    const getFirstSheetData = (workbook) => {
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      return XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    };
+
+    const dataA = getFirstSheetData(workbookA);
+    const dataB = getFirstSheetData(workbookB);
 
     // Validar datos
     if (dataA.length === 0 || dataB.length === 0) {
@@ -78,26 +92,41 @@ app.post('/process', upload.fields([
     }
 
     // Procesar y generar resultado
-    const result = assignCodes(dataA, dataB);
+    const result = assignCodesPerfectly(dataA, dataB);
     const newWorkbook = XLSX.utils.book_new();
     const newSheet = XLSX.utils.json_to_sheet(result);
     XLSX.utils.book_append_sheet(newWorkbook, newSheet, "Resultado");
 
-    const outputPath = path.join(__dirname, 'public', 'resultado.xlsx');
+    const outputDir = path.join(__dirname, 'public');
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir);
+    }
+
+    const outputPath = path.join(outputDir, 'resultado.xlsx');
     XLSX.writeFile(newWorkbook, outputPath);
 
-    res.download(outputPath, () => {
+    // Configurar respuesta
+    res.download(outputPath, 'resultado_codigos.xlsx', (err) => {
       // Limpiar archivos temporales
-      fs.unlinkSync(req.files['fileA'][0].path);
-      fs.unlinkSync(req.files['fileB'][0].path);
-      fs.unlinkSync(outputPath);
+      [req.files['fileA'][0].path, req.files['fileB'][0].path, outputPath].forEach(file => {
+        if (fs.existsSync(file)) {
+          fs.unlinkSync(file);
+        }
+      });
+      
+      if (err) {
+        console.error('Error al descargar:', err);
+      }
     });
 
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error en el servidor:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message
+    });
   }
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`));
