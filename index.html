@@ -1,306 +1,231 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asignador de Códigos</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background-color: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            margin-top: 30px;
-        }
-        
-        h1 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 30px;
-            font-size: 2.2rem;
-        }
-        
-        .description {
-            background-color: #e8f4fd;
-            border-left: 4px solid #3498db;
-            padding: 15px;
-            margin-bottom: 30px;
-            border-radius: 0 5px 5px 0;
-        }
-        
-        .form-group {
-            margin-bottom: 25px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #2c3e50;
-        }
-        
-        .file-upload {
-            border: 2px dashed #3498db;
-            border-radius: 8px;
-            padding: 25px;
-            text-align: center;
-            background-color: #f8fafd;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .file-upload:hover {
-            background-color: #e8f4fd;
-            border-color: #2980b9;
-        }
-        
-        .file-upload i {
-            font-size: 40px;
-            color: #3498db;
-            margin-bottom: 15px;
-            display: block;
-        }
-        
-        .file-name {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #7f8c8d;
-        }
-        
-        button {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 18px;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
-            font-weight: 600;
-            transition: background 0.3s;
-            margin-top: 10px;
-        }
-        
-        button:hover {
-            background: #2980b9;
-        }
-        
-        .examples {
-            margin-top: 40px;
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-        }
-        
-        .examples h2 {
-            margin-bottom: 15px;
-            color: #2c3e50;
-        }
-        
-        .example-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        
-        .example-table th, .example-table td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-        }
-        
-        .example-table th {
-            background-color: #f2f2f2;
-            font-weight: 600;
-        }
-        
-        .example-table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        
-        .instructions {
-            margin: 25px 0;
-            background-color: #f9f9f9;
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 4px solid #27ae60;
-        }
-        
-        .instructions h3 {
-            margin-bottom: 15px;
-            color: #27ae60;
-        }
-        
-        .instructions ol {
-            padding-left: 20px;
-        }
-        
-        .instructions li {
-            margin-bottom: 10px;
-        }
-        
-        .success-message {
-            display: none;
-            background-color: #d4edda;
-            color: #155724;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 20px;
-            text-align: center;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asignador Perfecto de Códigos</title>
+  <style>
+    :root {
+      --primary: #3498db;
+      --success: #2ecc71;
+      --danger: #e74c3c;
+      --warning: #f39c12;
+      --light: #ecf0f1;
+      --dark: #2c3e50;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      background-color: #f5f7fa;
+      color: var(--dark);
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    header {
+      background-color: var(--primary);
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+    }
+    .content {
+      padding: 30px;
+    }
+    .form-group {
+      margin-bottom: 25px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+    .file-input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      background: #f9f9f9;
+      transition: border 0.3s;
+    }
+    .file-input:hover {
+      border-color: var(--primary);
+    }
+    .btn {
+      display: inline-block;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s;
+      width: 100%;
+      text-align: center;
+    }
+    .btn:hover {
+      background: #2980b9;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .btn:disabled {
+      background: #95a5a6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .status {
+      margin-top: 25px;
+      padding: 15px;
+      border-radius: 5px;
+      text-align: center;
+      font-weight: 500;
+    }
+    .status.success {
+      background-color: rgba(46, 204, 113, 0.2);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+    .status.error {
+      background-color: rgba(231, 76, 60, 0.2);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+    .status.info {
+      background-color: rgba(52, 152, 219, 0.2);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+    .status.warning {
+      background-color: rgba(243, 156, 18, 0.2);
+      color: var(--warning);
+      border: 1px solid var(--warning);
+    }
+    .instructions {
+      background-color: var(--light);
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 25px;
+    }
+    .instructions h3 {
+      margin-bottom: 10px;
+      color: var(--primary);
+    }
+    .instructions ol {
+      padding-left: 20px;
+    }
+    .instructions li {
+      margin-bottom: 5px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Asignador de Códigos</h1>
-        
-        <div class="description">
-            <p>Esta herramienta asigna códigos únicos del Archivo B a valores repetidos del Archivo A, 
-            agrupando hasta 8 repeticiones por código. Para grupos mayores, distribuye los valores 
-            equitativamente entre múltiples códigos.</p>
-        </div>
-        
-        <div class="instructions">
-            <h3>Instrucciones de uso:</h3>
-            <ol>
-                <li>Archivo B: Debe contener una columna sin encabezado con códigos únicos</li>
-                <li>Archivo A: Debe contener una columna sin encabezado con valores que pueden repetirse</li>
-                <li>Haz clic en "Procesar Archivos" para generar el resultado</li>
-                <li>Descarga el archivo Excel con los códigos asignados</li>
-            </ol>
-        </div>
-        
-        <form id="uploadForm" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="archivoB">Archivo B (Códigos Únicos):</label>
-                <div class="file-upload" onclick="document.getElementById('fileB').click()">
-                    <i>📄</i>
-                    <p>Haz clic para seleccionar el archivo Excel con códigos únicos</p>
-                    <p class="file-name" id="fileNameB">Ningún archivo seleccionado</p>
-                </div>
-                <input type="file" id="fileB" name="archivoB" accept=".xlsx,.xls" style="display: none;" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="archivoA">Archivo A (Valores Repetidos):</label>
-                <div class="file-upload" onclick="document.getElementById('fileA').click()">
-                    <i>📄</i>
-                    <p>Haz clic para seleccionar el archivo Excel con valores repetidos</p>
-                    <p class="file-name" id="fileNameA">Ningún archivo seleccionado</p>
-                </div>
-                <input type="file" id="fileA" name="archivoA" accept=".xlsx,.xls" style="display: none;" required>
-            </div>
-            
-            <button type="button" onclick="procesarArchivos()">Procesar Archivos</button>
-            
-            <div class="success-message" id="successMessage">
-                ¡Archivos procesados correctamente! Tu archivo de resultado se descargará automáticamente.
-            </div>
-        </form>
-        
-        <div class="examples">
-            <h2>Ejemplos de Distribución</h2>
-            
-            <table class="example-table">
-                <tr>
-                    <th>Cantidad de Repeticiones</th>
-                    <th>Códigos Asignados</th>
-                    <th>Distribución</th>
-                </tr>
-                <tr>
-                    <td>9</td>
-                    <td>2 códigos</td>
-                    <td>5 y 4</td>
-                </tr>
-                <tr>
-                    <td>12</td>
-                    <td>2 códigos</td>
-                    <td>6 y 6</td>
-                </tr>
-                <tr>
-                    <td>17</td>
-                    <td>3 códigos</td>
-                    <td>6, 6 y 5</td>
-                </tr>
-                <tr>
-                    <td>25</td>
-                    <td>4 códigos</td>
-                    <td>7, 6, 6 y 6</td>
-                </tr>
-            </table>
-        </div>
-    </div>
+  <div class="container">
+    <header>
+      <h1>Asignador Perfecto de Códigos</h1>
+      <p>Distribución equitativa de códigos según patrones específicos</p>
+    </header>
 
-    <script>
-        // Actualizar nombres de archivo seleccionados
-        document.getElementById('fileB').addEventListener('change', function(e) {
-            const fileName = e.target.files[0] ? e.target.files[0].name : 'Ningún archivo seleccionado';
-            document.getElementById('fileNameB').textContent = fileName;
-        });
+    <div class="content">
+      <div class="instructions">
+        <h3>Instrucciones:</h3>
+        <ol>
+          <li>Archivo A: Contiene los valores (primera columna sin título)</li>
+          <li>Archivo B: Contiene los códigos únicos a asignar</li>
+          <li>El sistema distribuirá los códigos de forma perfectamente equitativa</li>
+        </ol>
+      </div>
+
+      <form id="uploadForm">
+        <div class="form-group">
+          <label for="fileA">Seleccione el Archivo A (Valores):</label>
+          <input type="file" id="fileA" name="fileA" class="file-input" accept=".xlsx, .xls" required>
+        </div>
+
+        <div class="form-group">
+          <label for="fileB">Seleccione el Archivo B (Códigos):</label>
+          <input type="file" id="fileB" name="fileB" class="file-input" accept=".xlsx, .xls" required>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn">Generar Archivo Resultado</button>
+      </form>
+
+      <div id="status" class="status" style="display: none;"></div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('uploadForm');
+      const statusDiv = document.getElementById('status');
+      const submitBtn = document.getElementById('submitBtn');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
         
-        document.getElementById('fileA').addEventListener('change', function(e) {
-            const fileName = e.target.files[0] ? e.target.files[0].name : 'Ningún archivo seleccionado';
-            document.getElementById('fileNameA').textContent = fileName;
-        });
-        
-        // Función para procesar archivos
-        function procesarArchivos() {
-            const fileB = document.getElementById('fileB').files[0];
-            const fileA = document.getElementById('fileA').files[0];
-            
-            if (!fileB || !fileA) {
-                alert('Debe seleccionar ambos archivos');
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('archivoB', fileB);
-            formData.append('archivoA', fileA);
-            
-            fetch('/procesar', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.text().then(text => { throw new Error(text) });
-                }
-                return response.blob();
-            })
-            .then(blob => {
-                // Mostrar mensaje de éxito
-                document.getElementById('successMessage').style.display = 'block';
-                
-                // Crear enlace para descargar el archivo
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = 'resultado.xlsx';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error al procesar archivos: ' + error.message);
-            });
+        // Reset status
+        statusDiv.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Procesando...';
+
+        const formData = new FormData();
+        formData.append('fileA', document.getElementById('fileA').files[0]);
+        formData.append('fileB', document.getElementById('fileB').files[0]);
+
+        try {
+          const response = await fetch('/process', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al procesar los archivos');
+          }
+
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'resultado_codigos.xlsx';
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          a.remove();
+
+          showStatus('Archivo generado con éxito! Descarga iniciada automáticamente.', 'success');
+        } catch (error) {
+          console.error('Error:', error);
+          showStatus(`Error: ${error.message}`, 'error');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Generar Archivo Resultado';
         }
-    </script>
+      });
+
+      function showStatus(message, type) {
+        statusDiv.textContent = message;
+        statusDiv.className = `status ${type}`;
+        statusDiv.style.display = 'block';
+      }
+    });
+  </script>
 </body>
 </html>
